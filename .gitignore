@@ -1,0 +1,29 @@
+<<<<<<< HEAD
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+
+# dependencies
+node_modules
+
+# next.js
+.next
+out
+
+# env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# misc
+.DS_Store
+>>>>>>> c9b9c23b0c2a488eeb5d6ce2edd2a424ff57b94f
