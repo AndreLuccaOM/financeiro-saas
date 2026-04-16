@@ -8,9 +8,12 @@ export default function Transacoes() {
 
   const buscar = async () => {
 
+    if (!user) return // 👈 evita rodar antes de ter o usuário
+
     let query = supabase
       .from("transactions")
       .select("*")
+      .eq("user_id", user.id) // 🔥 AQUI
       .order(ordem, { ascending: direcao === "asc" })
       .range(pagina * limite, (pagina + 1) * limite - 1)
 
@@ -59,6 +62,7 @@ export default function Transacoes() {
   const [ordem, setOrdem] = useState("data")
   const [direcao, setDirecao] = useState("desc")
   const [editando, setEditando] = useState<any>(null)
+  const [user, setUser] = useState<any>(null)
   const renderSortIcon = (campo: string) => {
     if (ordem !== campo) return null
 
@@ -93,7 +97,7 @@ export default function Transacoes() {
   }
   useEffect(() => {
     buscar()
-  }, [pagina, filtroTipo, filtroPagamento, dataInicio, dataFim, buscaDebounced, ordem, direcao])
+  }, [user, pagina, filtroTipo, filtroPagamento, dataInicio, dataFim, buscaDebounced, ordem, direcao])
   useEffect(() => {
     const timeout = setTimeout(() => {
       setBuscaDebounced(busca)
@@ -101,6 +105,14 @@ export default function Transacoes() {
 
     return () => clearTimeout(timeout)
   }, [busca])
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data.user)
+    }
+
+    getUser()
+  }, [])
 
 
   return (

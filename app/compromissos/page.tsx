@@ -21,10 +21,15 @@ export default function Compromissos() {
   const [temMais, setTemMais] = useState(true)
   const [editando, setEditando] = useState<any>(null)
 
+  const [user, setUser] = useState<any>(null)
+
   const buscar = async () => {
+    if (!user) return
+
     let query = supabase
       .from("commitments")
       .select("*")
+      .eq("user_id", user?.id)
       .order(ordem, { ascending: direcao === "asc" })
       .range(pagina * limite, (pagina + 1) * limite - 1)
 
@@ -58,7 +63,8 @@ export default function Compromissos() {
         valor: c.valor,
         pagamento: c.pagamento,
         data: c.data_inicio,
-        descricao: c.descricao
+        descricao: c.descricao,
+        user_id: user.id
       }
     ])
 
@@ -92,15 +98,24 @@ export default function Compromissos() {
 
   useEffect(() => {
     buscar()
-  }, [pagina, filtroTipo, filtroStatus, buscaDebounced, ordem, direcao])
+  }, [user, pagina, filtroTipo, filtroStatus, buscaDebounced, ordem, direcao])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       setBuscaDebounced(busca)
     }, 800)
 
+
     return () => clearTimeout(timeout)
   }, [busca])
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data.user)
+    }
+
+    getUser()
+  }, [])
 
   return (
     <Layout>

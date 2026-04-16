@@ -1,24 +1,45 @@
 "use client"
 
+import { useEffect } from "react"
+
+import { supabase } from "../../lib/supabase"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 import {
   HomeIcon,
   ArrowsRightLeftIcon,
   CalendarIcon,
   ChartBarIcon,
+  PowerIcon,
 } from "@heroicons/react/24/outline"
 
 export default function Layout({ children }: any) {
-  const pathname = usePathname()
 
+  const pathname = usePathname()
+  const router = useRouter()
   const menu = [
     { href: "/", label: "Início", icon: HomeIcon },
     { href: "/transacoes", label: "Transações", icon: ArrowsRightLeftIcon },
     { href: "/compromissos", label: "Compromissos", icon: CalendarIcon },
     { href: "/insights", label: "Insights", icon: ChartBarIcon },
+    { href: "/login", label: "Sair", icon: PowerIcon },
   ]
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser()
+
+      if (!data.user) {
+        router.push("/login")
+      }
+    }
+
+    checkUser()
+  }, [])
 
   return (
     <div className="h-screen p-4 bg-gray-100">
@@ -36,16 +57,26 @@ export default function Layout({ children }: any) {
                   : pathname.startsWith(item.href)
 
               const Icon = item.icon
-
+              if (item.label === "Sair") {
+                return (
+                  <button
+                    key={item.href}
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 p-2 rounded-lg transition font-medium text-gray-700 hover:bg-gray-100 w-full"
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </button>
+                )
+              }
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-3 p-2 rounded-lg transition font-medium
-                    ${
-                      isActive
-                        ? "bg-blue-500 text-white"
-                        : "text-gray-700 hover:bg-gray-100"
+                    ${isActive
+                      ? "bg-blue-500 text-white"
+                      : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
                   <Icon className="w-5 h-5" />

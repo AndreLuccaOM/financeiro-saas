@@ -51,11 +51,10 @@ export default function Home() {
     const { data, error } = await supabase
       .from("transactions")
       .select(`
-  *,
-  categories (
-    nome
-  )
-`)
+      *,
+      categories (nome)
+    `)
+      .eq("user_id", user?.id) // 🔥 ESSENCIAL
       .order("created_at", { ascending: false })
 
     if (!error) setTransacoes(data)
@@ -67,10 +66,21 @@ export default function Home() {
   const categoriasFiltradas = categorias.filter(
     (c) => c.tipo === tipo
   )
+  const [user, setUser] = useState<any>(null)
   useEffect(() => {
-    buscarTransacoes()
-    buscarCategorias()
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data.user)
+    }
+
+    getUser()
   }, [])
+  useEffect(() => {
+    if (user) {
+      buscarTransacoes()
+      buscarCategorias()
+    }
+  }, [user])
   const formatarMoedaBRL = (valor: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -98,7 +108,9 @@ export default function Home() {
           parcela_atual: i + 1,
           parcelas: totalParcelas,
           recorrente: !parcelas,
-          status: "pendente"
+          status: "pendente",
+          categoria: Number(categoriaId),
+          user_id: user.id // ✅ agora certo
         })
       }
 
@@ -120,7 +132,8 @@ export default function Home() {
           pagamento,
           data: dataFinal,
           descricao,
-          categoria: Number(categoriaId)
+          categoria: Number(categoriaId),
+          user_id: user.id // ✅ agora certo
         }
       ])
 
