@@ -13,7 +13,10 @@ import {
   ChartBarIcon,
   PowerIcon,
 } from "@heroicons/react/24/outline"
-
+export const metadata = {
+  title: "Financeiro SaaS",
+  description: "Controle financeiro simples",
+}
 export default function Layout({ children }: any) {
 
   const pathname = usePathname()

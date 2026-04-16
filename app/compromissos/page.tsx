@@ -64,7 +64,9 @@ export default function Compromissos() {
         pagamento: c.pagamento,
         data: c.data_inicio,
         descricao: c.descricao,
-        user_id: user.id
+        user_id: user.id,
+        categoria: c.categoria,
+        commitments_id : c.id
       }
     ])
 
@@ -292,6 +294,13 @@ export default function Compromissos() {
                           className="text-blue-500 hover:underline"
                         >
                           Editar
+                        </button>
+
+                        <button
+                          onClick={() => setEditando(c)}
+                          className="text-red-500 hover:underline"
+                        >
+                          Remover
                         </button>
 
                       </td>
