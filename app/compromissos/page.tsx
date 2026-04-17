@@ -2,10 +2,12 @@
 import { useEffect, useState } from "react"
 import { supabase } from "../../lib/supabase"
 import Layout from "../components/Layout"
+import { useAuth } from "../components/AuthContext"
+import useSWR from "swr"
 import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/solid"
 
 export default function Compromissos() {
-  const [compromissos, setCompromissos] = useState<any[]>([])
+
 
   const [pagina, setPagina] = useState(0)
   const limite = 10
@@ -18,37 +20,37 @@ export default function Compromissos() {
   const [ordem, setOrdem] = useState("data_inicio")
   const [direcao, setDirecao] = useState("asc")
 
-  const [temMais, setTemMais] = useState(true)
+
+
   const [editando, setEditando] = useState<any>(null)
+  const { user, loading } = useAuth()
 
-  const [user, setUser] = useState<any>(null)
-
-  const buscar = async () => {
-    if (!user) return
-
+  const fetchCompromissos = async ({
+    userId,
+    pagina,
+    filtroTipo,
+    filtroStatus,
+    buscaDebounced,
+    ordem,
+    direcao,
+  }: any) => {
     let query = supabase
       .from("commitments")
       .select("*")
-      .eq("user_id", user?.id)
+      .eq("user_id", userId)
       .order(ordem, { ascending: direcao === "asc" })
-      .range(pagina * limite, (pagina + 1) * limite - 1)
+      .range(pagina * 10, (pagina + 1) * 10 - 1)
 
     if (filtroTipo) query = query.eq("tipo", filtroTipo)
     if (filtroStatus) query = query.eq("status", filtroStatus)
-
     if (buscaDebounced) {
       query = query.ilike("descricao", `%${buscaDebounced}%`)
     }
 
-    const { data } = await query
+    const { data, error } = await query
 
-    if (!data || data.length < limite) {
-      setTemMais(false)
-    } else {
-      setTemMais(true)
-    }
-
-    setCompromissos(data || [])
+    if (error) throw error
+    return data || []
   }
 
   const pagar = async (c: any) => {
@@ -66,11 +68,11 @@ export default function Compromissos() {
         descricao: c.descricao,
         user_id: user.id,
         categoria: c.categoria,
-        commitments_id : c.id
+        commitments_id: c.id
       }
     ])
 
-    buscar()
+    mutate()
   }
 
   const ordenar = (campo: string) => {
@@ -98,9 +100,36 @@ export default function Compromissos() {
     return `${dia}/${mes}/${ano}`
   }
 
-  useEffect(() => {
-    buscar()
-  }, [user, pagina, filtroTipo, filtroStatus, buscaDebounced, ordem, direcao])
+  const { data: compromissos = [], isLoading, mutate } = useSWR(
+    user
+      ? [
+        "commitments",
+        user.id,
+        pagina,
+        filtroTipo,
+        filtroStatus,
+        buscaDebounced,
+        ordem,
+        direcao,
+      ]
+      : null,
+    ([_, userId, pagina, filtroTipo, filtroStatus, buscaDebounced, ordem, direcao]) =>
+      fetchCompromissos({
+        userId,
+        pagina,
+        filtroTipo,
+        filtroStatus,
+        buscaDebounced,
+        ordem,
+        direcao,
+      }),
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 5000,
+    }
+  )
+
+  const temMais = compromissos.length === limite
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -110,14 +139,6 @@ export default function Compromissos() {
 
     return () => clearTimeout(timeout)
   }, [busca])
-  useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      setUser(data.user)
-    }
-
-    getUser()
-  }, [])
 
   return (
     <Layout>

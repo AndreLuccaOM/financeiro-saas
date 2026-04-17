@@ -3,48 +3,13 @@ import { useEffect, useState } from "react"
 import { supabase } from "../../lib/supabase"
 import Layout from "../components/Layout"
 import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/solid"
+import { useAuth } from "../components/AuthContext" // ajusta o path
+import useSWR from "swr"
 export default function Transacoes() {
-  const [transacoes, setTransacoes] = useState<any[]>([])
 
-  const buscar = async () => {
 
-    if (!user) return // 👈 evita rodar antes de ter o usuário
 
-    let query = supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user.id) // 🔥 AQUI
-      .order(ordem, { ascending: direcao === "asc" })
-      .range(pagina * limite, (pagina + 1) * limite - 1)
 
-    if (filtroTipo) {
-      query = query.eq("tipo", filtroTipo)
-    }
-    if (filtroPagamento) {
-      query = query.eq("pagamento", filtroPagamento)
-    }
-
-    if (dataInicio) {
-      query = query.gte("data", dataInicio)
-    }
-    if (buscaDebounced) {
-      query = query.ilike("descricao", `%${buscaDebounced}%`)
-    }
-
-    if (dataFim) {
-      query = query.lte("data", dataFim)
-    }
-
-    const { data } = await query
-
-    // 🔴 Se veio menos que o limite → acabou
-    if (!data || data.length < limite) {
-      setTemMais(false)
-    } else {
-      setTemMais(true)
-    }
-    setTransacoes(data || [])
-  }
   const formatarData = (data: string) => {
     const d = new Date(data)
     return d.toLocaleDateString("pt-BR")
@@ -55,14 +20,13 @@ export default function Transacoes() {
   const [filtroTipo, setFiltroTipo] = useState("")
   const [dataInicio, setDataInicio] = useState("")
   const [dataFim, setDataFim] = useState("")
-  const [temMais, setTemMais] = useState(true)
   const [filtroPagamento, setFiltroPagamento] = useState("")
   const [busca, setBusca] = useState("")
   const [buscaDebounced, setBuscaDebounced] = useState("")
   const [ordem, setOrdem] = useState("data")
   const [direcao, setDirecao] = useState("desc")
   const [editando, setEditando] = useState<any>(null)
-  const [user, setUser] = useState<any>(null)
+  const { user, loading } = useAuth()
   const renderSortIcon = (campo: string) => {
     if (ordem !== campo) return null
 
@@ -93,11 +57,73 @@ export default function Transacoes() {
       .eq("id", editando.id)
 
     setEditando(null)
-    buscar()
+    mutate()
   }
-  useEffect(() => {
-    buscar()
-  }, [user, pagina, filtroTipo, filtroPagamento, dataInicio, dataFim, buscaDebounced, ordem, direcao])
+
+  const fetchTransacoes = async ({
+    userId,
+    pagina,
+    filtroTipo,
+    filtroPagamento,
+    dataInicio,
+    dataFim,
+    buscaDebounced,
+    ordem,
+    direcao,
+  }: any) => {
+    let query = supabase
+      .from("transactions")
+      .select(`*, categories (nome)`)
+      .eq("user_id", userId)
+      .order(ordem, { ascending: direcao === "asc" })
+      .range(pagina * 10, (pagina + 1) * 10 - 1)
+
+    if (filtroTipo) query = query.eq("tipo", filtroTipo)
+    if (filtroPagamento) query = query.eq("pagamento", filtroPagamento)
+    if (dataInicio) query = query.gte("data", dataInicio)
+    if (dataFim) query = query.lte("data", dataFim)
+    if (buscaDebounced)
+      query = query.ilike("descricao", `%${buscaDebounced}%`)
+
+    const { data, error } = await query
+
+    if (error) throw error
+    return data || []
+  }
+
+  const { data: transacoes = [], isLoading, mutate } = useSWR(
+    user
+      ? [
+        "transactions",
+        user.id,
+        pagina,
+        filtroTipo,
+        filtroPagamento,
+        dataInicio,
+        dataFim,
+        buscaDebounced,
+        ordem,
+        direcao,
+      ]
+      : null,
+    ([_, userId, pagina, filtroTipo, filtroPagamento, dataInicio, dataFim, buscaDebounced, ordem, direcao]) =>
+      fetchTransacoes({
+        userId: user.id,
+        pagina,
+        filtroTipo,
+        filtroPagamento,
+        dataInicio,
+        dataFim,
+        buscaDebounced,
+        ordem,
+        direcao,
+      }),
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 5000,
+    }
+  )
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       setBuscaDebounced(busca)
@@ -105,15 +131,8 @@ export default function Transacoes() {
 
     return () => clearTimeout(timeout)
   }, [busca])
-  useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      setUser(data.user)
-    }
 
-    getUser()
-  }, [])
-
+  const temMais = transacoes.length === limite
 
   return (
     <Layout>
@@ -380,7 +399,7 @@ export default function Transacoes() {
                     .eq("id", editando.id)
 
                   setEditando(null)
-                  buscar()
+                  mutate()
                 }}
                 className="text-red-500"
               >

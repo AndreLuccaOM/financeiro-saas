@@ -1,7 +1,9 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { supabase } from "../lib/supabase"
 import Layout from "./components/Layout"
+import useSWR from "swr"
+import { useAuth } from "./components/AuthContext"
 import {
   BarChart,
   Bar,
@@ -25,9 +27,10 @@ export default function Home() {
   const [data, setData] = useState("")
   const [descricao, setDescricao] = useState("")
   const [abrirModal, setAbrirModal] = useState(false)
-  const [transacoes, setTransacoes] = useState<any[]>([])
   const [categoriaId, setCategoriaId] = useState("")
-  const [categorias, setCategorias] = useState<any[]>([])
+
+
+  const { user, loading } = useAuth()
 
   const [fixo, setFixo] = useState(false)
   const [parcelas, setParcelas] = useState("")
@@ -47,46 +50,53 @@ export default function Home() {
 
     return `${ano}-${mes}-${dia}`
   }
-  const buscarTransacoes = async () => {
-    const { data, error } = await supabase
-      .from("transactions")
-      .select(`
-      *,
-      categories (nome)
-    `)
-      .eq("user_id", user?.id) // 🔥 ESSENCIAL
-      .order("created_at", { ascending: false })
 
-    if (!error) setTransacoes(data)
-  }
   const formatarData = (data: string) => {
     const [ano, mes, dia] = data.split("-")
     return `${dia}/${mes}/${ano}`
   }
-  const categoriasFiltradas = categorias.filter(
-    (c) => c.tipo === tipo
-  )
-  const [user, setUser] = useState<any>(null)
-  useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      setUser(data.user)
-    }
 
-    getUser()
-  }, [])
-  useEffect(() => {
-    if (user) {
-      buscarTransacoes()
-      buscarCategorias()
-    }
-  }, [user])
+
+  const fetchTransacoes = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select(`*, categories (nome)`)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    if (error) throw error
+    return data || []
+  }
+
+  const fetchCategorias = async () => {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+
+    if (error) throw error
+    return data || []
+  }
+
+  const { data: transacoes = [], mutate: mutateTransacoes } = useSWR(
+    user ? ["transactions-home", user.id] : null,
+    ([_, userId]) => fetchTransacoes(userId)
+  )
+
+  const { data: categorias = [] } = useSWR(
+    user ? "categories" : null,
+    fetchCategorias
+  )
+
   const formatarMoedaBRL = (valor: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL"
     }).format(valor)
   }
+
+  const categoriasFiltradas = useMemo(() => {
+    return categorias.filter((c) => c.tipo === tipo)
+  }, [categorias, tipo])
   const salvar = async () => {
     const dataFinal = data || getHoje()
 
@@ -152,7 +162,7 @@ export default function Home() {
     setFixo(false)
     setAbrirModal(false)
 
-    buscarTransacoes()
+    mutateTransacoes()
   }
 
   const saldo = transacoes.reduce((acc, t) => {
@@ -172,7 +182,7 @@ export default function Home() {
       .filter((t) => t.tipo === "saida")
       .reduce((acc, t) => acc + Number(t.valor), 0)
   }
-  const [loading, setLoading] = useState(false)
+
   const mesAtual = new Date().getMonth()
   const anoAtual = new Date().getFullYear()
 
@@ -244,13 +254,7 @@ export default function Home() {
     return `R$ ${valor}`
   }
 
-  const buscarCategorias = async () => {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
 
-    if (!error) setCategorias(data)
-  }
 
   const gerarDadosPizza = () => {
     const mapa: any = {}

@@ -5,6 +5,9 @@ import { useEffect } from "react"
 import { supabase } from "../../lib/supabase"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
+import { useAuth } from "../components/AuthContext"
+import { AuthProvider } from "../components/AuthContext"
+
 
 import {
   HomeIcon,
@@ -18,7 +21,7 @@ export const metadata = {
   description: "Controle financeiro simples",
 }
 export default function Layout({ children }: any) {
-
+  const { user, loading } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
   const menu = [
@@ -29,21 +32,26 @@ export default function Layout({ children }: any) {
     { href: "/login", label: "Sair", icon: PowerIcon },
   ]
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: "local" })
     router.push("/login")
   }
   useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getUser()
-
-      if (!data.user) {
-        router.push("/login")
-      }
+    if (!loading && !user) {
+      router.push("/login")
     }
+  }, [user, loading])
 
-    checkUser()
-  }, [])
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        Carregando...
+      </div>
+    )
+  }
 
+  if (!user) {
+    return null // 🔥 NÃO renderiza nada
+  }
   return (
     <div className="h-screen p-4 bg-gray-100">
       <div className="grid grid-cols-12 gap-4 h-full">
@@ -74,6 +82,7 @@ export default function Layout({ children }: any) {
               }
               return (
                 <Link
+                  prefetch
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-3 p-2 rounded-lg transition font-medium
