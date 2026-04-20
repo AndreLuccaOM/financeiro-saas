@@ -15,6 +15,7 @@ import {
   ArrowsRightLeftIcon,
   CalendarIcon,
   ChartBarIcon,
+  UserIcon,
   PowerIcon,
 } from "@heroicons/react/24/outline"
 export const metadata = {
@@ -30,6 +31,7 @@ export default function Layout({ children }: any) {
     { href: "/transacoes", label: "Transações", icon: ArrowsRightLeftIcon },
     { href: "/compromissos", label: "Compromissos", icon: CalendarIcon },
     { href: "/insights", label: "Insights", icon: ChartBarIcon },
+    { href: "/perfil", label: "Perfil", icon: UserIcon },
     { href: "/login", label: "Sair", icon: PowerIcon },
   ]
   const handleLogout = async () => {
@@ -48,7 +50,7 @@ export default function Layout({ children }: any) {
     return data
   }
   const { data: profile } = useSWR(
-    user ? ["profile", user.id] : null,
+    user ? ["profile-foto", user.id] : null,
     ([_, userId]) => fetchProfile(userId)
   )
   const fotoUrl = profile?.foto || null
