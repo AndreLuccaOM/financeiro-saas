@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import { supabase } from "../../lib/supabase"
 import Link from "next/link"
+import useSWR from "swr"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "../components/AuthContext"
 import { AuthProvider } from "../components/AuthContext"
-
+import Image from "next/image"
 
 import {
   HomeIcon,
@@ -35,11 +36,41 @@ export default function Layout({ children }: any) {
     await supabase.auth.signOut({ scope: "local" })
     router.push("/login")
   }
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("foto")
+      .eq("id", userId)
+      .single()
+
+    if (error) throw error
+
+    return data
+  }
+  const { data: profile } = useSWR(
+    user ? ["profile", user.id] : null,
+    ([_, userId]) => fetchProfile(userId)
+  )
+  const fotoUrl = profile?.foto || null
+  const [openMenu, setOpenMenu] = useState(false)
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login")
     }
   }, [user, loading])
+
+
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenu(false)
+
+    if (openMenu) {
+      document.addEventListener("click", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside)
+    }
+  }, [openMenu])
 
   if (loading) {
     return (
@@ -48,10 +79,10 @@ export default function Layout({ children }: any) {
       </div>
     )
   }
-
   if (!user) {
     return null // 🔥 NÃO renderiza nada
   }
+
   return (
     <div className="h-screen p-4 bg-gray-100">
       <div className="grid grid-cols-12 gap-4 h-full">
@@ -113,9 +144,40 @@ export default function Layout({ children }: any) {
               </p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full border"></div>
-              <span>Perfil</span>
+            <div className="flex items-center gap-4 relative">
+              <div className="w-10 h-10 cursor-pointer" onClick={() => setOpenMenu(!openMenu)}>
+                {fotoUrl ? (
+                  <img
+                    src={fotoUrl}
+                    alt="Foto do usuário"
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gray-200 border" />
+                )}
+
+                {openMenu && (
+                  <div className="absolute right-0 top-12 w-40 bg-white rounded-lg shadow-lg border z-50">
+                    <Link
+                      href="/perfil"
+                      className="block rounded-lg px-4 py-2 text-sm hover:bg-blue-500 hover:text-white"
+                      onClick={() => setOpenMenu(false)}
+                    >
+                      Perfil
+                    </Link>
+
+                    <button
+                      onClick={() => {
+                        setOpenMenu(false)
+                        handleLogout()
+                      }}
+                      className="w-full rounded-lg text-left px-4 py-2 text-sm hover:bg-blue-500 hover:text-white"
+                    >
+                      Sair
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
