@@ -17,6 +17,8 @@ import {
   ChartBarIcon,
   UserIcon,
   PowerIcon,
+  XMarkIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline"
 export const metadata = {
   title: "Financeiro SaaS",
@@ -73,7 +75,7 @@ export default function Layout({ children }: any) {
       document.removeEventListener("click", handleClickOutside)
     }
   }, [openMenu])
-
+  const [menuMobile, setMenuMobile] = useState(false)
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -87,10 +89,57 @@ export default function Layout({ children }: any) {
 
   return (
     <div className="h-screen p-4 bg-gray-100">
-      <div className="grid grid-cols-12 gap-4 h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
 
         {/* MENU */}
-        <div className="col-span-2 bg-white rounded-xl p-4 shadow">
+
+
+        {menuMobile && (
+          <div className="fixed inset-0 bg-black/40 z-50">
+            <div className="bg-white w-64 h-full p-4">
+
+              <button onClick={() => setMenuMobile(false)}><XMarkIcon className="w-6 h-6 text-blue-500" /></button>
+
+              {menu.map((item) => {
+                const isActive =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href)
+
+                const Icon = item.icon
+                if (item.label === "Sair") {
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 p-2 rounded-lg transition font-medium text-gray-700 hover:bg-gray-100 w-full"
+                    >
+                      <Icon className="w-5 h-5" />
+                      {item.label}
+                    </button>
+                  )
+                }
+                return (
+                  <Link
+                    prefetch
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 p-2 rounded-lg transition font-medium
+                    ${isActive
+                        ? "bg-blue-500 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+
+            </div>
+          </div>
+        )}
+        <div className="hidden lg:block lg:col-span-2 bg-white rounded-xl p-4 shadow">
           <h2 className="font-bold text-lg mb-4">MENU</h2>
 
           <div className="flex flex-col gap-2">
@@ -133,7 +182,7 @@ export default function Layout({ children }: any) {
         </div>
 
         {/* CONTEÚDO */}
-        <div className="col-span-10 flex flex-col gap-4">
+        <div className="col-span-1 lg:col-span-10 flex flex-col gap-4 lg:pb-0 pb-4">
 
           {/* HEADER */}
           <div className="bg-white rounded-xl p-4 shadow flex justify-between items-center">
@@ -180,6 +229,12 @@ export default function Layout({ children }: any) {
                   </div>
                 )}
               </div>
+              <button
+                className="lg:hidden"
+                onClick={() => setMenuMobile(true)}
+              >
+                <Bars3Icon className="w-6 h-6 text-blue-500" />
+              </button>
             </div>
           </div>
 

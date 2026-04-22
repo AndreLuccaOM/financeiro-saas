@@ -309,7 +309,7 @@ export default function Home() {
         <div className="col-span-12 flex flex-col gap-4">
 
           {/* CARDS */}
-          <div className="grid grid-cols-5 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
             <Card titulo="Saldo atual" valor={saldo} />
             <Card titulo="Entradas do mês" valor={entradasMes} />
             <Card titulo="Saídas do mês" valor={saídasMes} />
@@ -326,18 +326,19 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-4 flex-1">
             <div className="col-span-2 bg-white rounded-xl p-4 shadow overflow-hidden">
 
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={gerarDadosGrafico()}
-                >
-                  <XAxis dataKey="mes" />
-                  <YAxis tickFormatter={(v) => formatarMoeda(v)} width={90} />
-                  <Tooltip formatter={(value) => formatarMoeda(value)} />
-                  <Legend />
+              <div className="bg-white rounded-xl p-4 h-[300px] lg:h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={gerarDadosGrafico()}>
+                    <XAxis dataKey="mes" />
+                    <YAxis tickFormatter={(v) => formatarMoeda(v)} width={90} />
+                    <Tooltip formatter={(value) => formatarMoeda(value)} />
+                    <Legend />
 
-                  <Bar dataKey="passado" fill="#94a3b8" name="Ano passado" />
-                  <Bar dataKey="atual" fill="#3b82f6" name="Ano atual" />
-                </BarChart>
-              </ResponsiveContainer>
+                    <Bar dataKey="passado" fill="#94a3b8" name="Ano passado" />
+                    <Bar dataKey="atual" fill="#3b82f6" name="Ano atual" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
           </div>
@@ -354,8 +355,8 @@ export default function Home() {
               </a>
             </div>
 
-            <div className="overflow-hidden rounded-xl border">
-              <table className="w-full text-sm">
+            <div className="overflow-hidden rounded-xl border overflow-x-auto">
+              <table className="min-w-[600px] w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500">
                   <tr className="text-left">
                     <th className="p-3">Data</th>

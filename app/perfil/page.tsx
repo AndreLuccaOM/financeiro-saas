@@ -105,8 +105,8 @@ export default function Perfil() {
       <div className="h-full flex flex-col gap-4">
 
         {/* HEADER */}
-        <div className="bg-white p-6 rounded-xl shadow flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <div className="flex-col gap-2 lg:gap-0 lg:flex-row bg-white p-6 rounded-xl shadow flex justify-between items-center">
+          <div className="flex-col flex items-center gap-4 lg:flex-row">
             {foto ? (
               <img src={foto} className="w-20 h-20 rounded-full object-cover" />
             ) : (
@@ -125,7 +125,7 @@ export default function Perfil() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex-col lg:flex-row flex gap-2">
             <button
               onClick={() => setEditandoPerfil(true)}
               className="bg-blue-500 text-white px-4 py-2 rounded-lg"
@@ -143,7 +143,7 @@ export default function Perfil() {
         </div>
 
         {/* CONTEÚDO */}
-        <div className="grid grid-cols-2 gap-4 flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
 
           {/* ESQUERDA - ocupa o espaço restante */}
           <div className="flex flex-col gap-4 flex-grow">
