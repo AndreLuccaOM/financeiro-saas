@@ -11,8 +11,8 @@ export default function Transacoes() {
 
 
   const formatarData = (data: string) => {
-    const d = new Date(data)
-    return d.toLocaleDateString("pt-BR")
+    const [ano, mes, dia] = data.split("-")
+    return `${dia}/${mes}/${ano}`
   }
   const [pagina, setPagina] = useState(0)
   const limite = 10
@@ -27,6 +27,37 @@ export default function Transacoes() {
   const [direcao, setDirecao] = useState("desc")
   const [editando, setEditando] = useState<any>(null)
   const { user, loading } = useAuth()
+  const formatarMoedaInput = (valor: string) => {
+    const numero = Number(valor) / 100
+
+    return numero.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    })
+  }
+  const handleValorEdit = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let somenteNumeros = e.target.value.replace(/\D/g, "")
+
+    setEditando({
+      ...editando,
+      valor: somenteNumeros
+    })
+  }
+  const fetchCategorias = async () => {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+
+    if (error) throw error
+    return data || []
+  }
+  const { data: categorias = [] } = useSWR(
+    user ? "categories" : null,
+    fetchCategorias
+  )
+  const categoriasFiltradas = categorias.filter(
+    (c) => c.tipo === editando?.tipo
+  )
   const renderSortIcon = (campo: string) => {
     if (ordem !== campo) return null
 
@@ -49,10 +80,11 @@ export default function Transacoes() {
     await supabase
       .from("transactions")
       .update({
-        valor: Number(editando.valor),
+        valor: Number(editando.valor) / 100,
         descricao: editando.descricao,
         pagamento: editando.pagamento,
-        tipo: editando.tipo
+        tipo: editando.tipo,
+        categoria: Number(editando.categoria) // 👈 FALTAVA ISSO
       })
       .eq("id", editando.id)
 
@@ -71,10 +103,12 @@ export default function Transacoes() {
     ordem,
     direcao,
   }: any) => {
+    
     let query = supabase
       .from("transactions")
       .select(`*, categories (nome)`)
       .eq("user_id", userId)
+      
       .order(ordem, { ascending: direcao === "asc" })
       .range(pagina * 10, (pagina + 1) * 10 - 1)
 
@@ -172,6 +206,7 @@ export default function Transacoes() {
           <input
             type="date"
             value={dataInicio}
+            placeholder="A Partir"
             onChange={(e) => setDataInicio(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm shadow-sm"
           />
@@ -232,6 +267,16 @@ export default function Transacoes() {
                     </div>
                   </th>
 
+                  <th
+                    onClick={() => ordenar("categoria")}
+                    className="p-3 cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-1">
+                      Categoria
+                      {renderSortIcon("categoria")}
+                    </div>
+                  </th>
+
                   <th onClick={() => ordenar("pagamento")} className="p-3 cursor-pointer hover:bg-gray-100">
                     <div className="flex items-center gap-1">
                       Pagamento
@@ -269,6 +314,9 @@ export default function Transacoes() {
                     <td className="p-3 font-medium">
                       {t.descricao || "-"}
                     </td>
+                    <td className="p-3 font-medium">
+                      {t.categories?.nome || "-"}
+                    </td>
 
                     <td className="p-3">
                       <span className="bg-gray-100 px-2 py-1 rounded-full text-xs">
@@ -293,7 +341,13 @@ export default function Transacoes() {
                     </td>
                     <td className="p-3 flex gap-2">
                       <button
-                        onClick={() => setEditando(t)}
+                        onClick={() =>
+                          setEditando({
+                            ...t,
+                            valor: String(Number(t.valor) * 100),
+                            categoria: t.categoria
+                          })
+                        }
                         className="text-blue-500 hover:underline"
                       >
                         Editar
@@ -342,16 +396,19 @@ export default function Transacoes() {
             <div className="flex flex-col gap-3">
 
               <input
-                type="number"
-                value={editando.valor}
-                onChange={(e) =>
-                  setEditando({ ...editando, valor: e.target.value })
+                type="text"
+                value={
+                  editando.valor
+                    ? formatarMoedaInput(editando.valor)
+                    : ""
                 }
+                onChange={handleValorEdit}
                 className="border p-2 rounded-lg"
               />
 
               <input
                 type="text"
+                placeholder="Descrição (opcional)"
                 value={editando.descricao}
                 onChange={(e) =>
                   setEditando({ ...editando, descricao: e.target.value })
@@ -381,6 +438,22 @@ export default function Transacoes() {
                 <option value="cartao">Cartão</option>
                 <option value="pix">Pix</option>
                 <option value="boleto">Boleto</option>
+              </select>
+
+              <select
+                value={editando.categoria || ""}
+                onChange={(e) =>
+                  setEditando({ ...editando, categoria: e.target.value })
+                }
+                className="border p-2 rounded-lg"
+              >
+                <option value="">Selecione uma categoria</option>
+
+                {categoriasFiltradas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
               </select>
 
             </div>

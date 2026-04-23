@@ -54,11 +54,13 @@ export default function Compromissos() {
   }
 
   const pagar = async (c: any) => {
+    // 1. marcar como pago
     await supabase
       .from("commitments")
       .update({ status: "pago" })
       .eq("id", c.id)
 
+    // 2. criar transação
     await supabase.from("transactions").insert([
       {
         tipo: c.tipo,
@@ -71,6 +73,30 @@ export default function Compromissos() {
         commitments_id: c.id
       }
     ])
+
+    // 🔥 3. SE FOR RECORRENTE → cria próximo
+    if (c.recorrente) {
+      const [ano, mes, dia] = c.data_inicio.split("-").map(Number)
+
+      const proximaData = new Date(ano, mes, dia) // +1 mês automático
+
+      await supabase.from("commitments").insert([
+        {
+          tipo: c.tipo,
+          valor: c.valor,
+          pagamento: c.pagamento,
+          descricao: c.descricao,
+          data_inicio: proximaData.toISOString().slice(0, 10),
+          parcela_atual: null,
+          parcelas: null,
+          recorrente: true,
+          status: "pendente",
+          categoria: c.categoria,
+          user_id: user.id,
+          grupo_id: c.grupo_id || crypto.randomUUID()
+        }
+      ])
+    }
 
     mutate()
   }
@@ -128,9 +154,92 @@ export default function Compromissos() {
       dedupingInterval: 5000,
     }
   )
+  const remover = async (c: any) => {
+    await supabase
+      .from("commitments")
+      .delete()
+      .eq("id", c.id)
 
+    mutate()
+  }
+
+  const removerComOpcao = async () => {
+    if (!editando) return
+
+    let query = supabase.from("commitments").delete()
+
+    if (modoEdicao === "um") {
+      query = query.eq("id", editando.id)
+    } else {
+      query = query.eq("grupo_id", editando.grupo_id)
+    }
+
+    await query
+
+    setEditando(null)
+    mutate()
+  }
+
+  const cancelarPagamento = async (c: any) => {
+    // 1. voltar status
+    await supabase
+      .from("commitments")
+      .update({ status: "pendente" })
+      .eq("id", c.id)
+
+    // 2. deletar transação vinculada
+    await supabase
+      .from("transactions")
+      .delete()
+      .eq("commitments_id", c.id)
+
+    mutate()
+  }
   const temMais = compromissos.length === limite
+  const [modoEdicao, setModoEdicao] = useState<"um" | "todos">("um")
+  const [form, setForm] = useState({
+    descricao: "",
+    valor: "",
+    data_inicio: ""
+  })
 
+  const salvarEdicao = async () => {
+    if (!editando) return
+
+    let updateData: any = {
+      descricao: form.descricao,
+      valor: Number(form.valor) / 100
+    }
+
+    // 🔥 só permite alterar data se for UM
+    if (modoEdicao === "um") {
+      updateData.data_inicio = form.data_inicio
+    }
+
+    let query = supabase
+      .from("commitments")
+      .update(updateData)
+      .eq("status", "pendente")
+
+    if (modoEdicao === "um") {
+      query = query.eq("id", editando.id)
+    } else {
+      query = query.eq("grupo_id", editando.grupo_id)
+    }
+
+    await query
+
+    setEditando(null)
+    mutate()
+  }
+  const formatarMoedaInput = (valor: string) => {
+    const numero = Number(valor) / 100
+
+    return numero.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    })
+  }
   useEffect(() => {
     const timeout = setTimeout(() => {
       setBuscaDebounced(busca)
@@ -272,7 +381,13 @@ export default function Compromissos() {
                       </td>
 
                       <td className="p-3 font-medium">
-                        {c.descricao || "-"}
+                        {c.descricao || ""}
+
+                        {c.parcelas > 1 && (
+                          <span className="text-gray-500 text-xs ml-1">
+                            ({String(c.parcela_atual).padStart(2, "0")}/{String(c.parcelas).padStart(2, "0")})
+                          </span>
+                        )}
                       </td>
 
                       <td className="p-3">
@@ -301,28 +416,44 @@ export default function Compromissos() {
 
                       <td className="p-3 flex gap-2">
 
+                        {/* PENDENTE */}
                         {c.status === "pendente" && (
-                          <button
-                            onClick={() => pagar(c)}
-                            className="text-green-600 hover:underline"
-                          >
-                            Pagar
-                          </button>
+                          <>
+                            <button
+                              onClick={() => pagar(c)}
+                              className="text-green-600 hover:underline"
+                            >
+                              Pagar
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setEditando(c)
+                                setModoEdicao("um")
+                                setForm({
+                                  descricao: c.descricao || "",
+                                  valor: String(Math.round(Number(c.valor) * 100)),
+                                  data_inicio: c.data_inicio
+                                })
+                              }}
+                              className="text-blue-500 hover:underline"
+                            >
+                              Editar
+                            </button>
+
+
+                          </>
                         )}
 
-                        <button
-                          onClick={() => setEditando(c)}
-                          className="text-blue-500 hover:underline"
-                        >
-                          Editar
-                        </button>
-
-                        <button
-                          onClick={() => setEditando(c)}
-                          className="text-red-500 hover:underline"
-                        >
-                          Remover
-                        </button>
+                        {/* PAGO */}
+                        {c.status === "pago" && (
+                          <button
+                            onClick={() => cancelarPagamento(c)}
+                            className="text-yellow-600 hover:underline"
+                          >
+                            Cancelar
+                          </button>
+                        )}
 
                       </td>
 
@@ -362,6 +493,103 @@ export default function Compromissos() {
 
         </div>
       </div>
+      {editando && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl">
+
+            <h2 className="text-lg font-bold mb-4">
+              Editar compromisso
+            </h2>
+
+            {/* OPÇÃO UM OU TODOS */}
+            <div className="flex gap-4 mb-4 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={modoEdicao === "um"}
+                  onChange={() => setModoEdicao("um")}
+                />
+                Apenas este
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={modoEdicao === "todos"}
+                  onChange={() => setModoEdicao("todos")}
+                />
+                Todos relacionados
+              </label>
+            </div>
+
+            {/* FORM */}
+            <div className="flex flex-col gap-3">
+              <input
+                type="text"
+                placeholder="Descrição"
+                value={form.descricao}
+                onChange={(e) =>
+                  setForm({ ...form, descricao: e.target.value })
+                }
+                className="border p-2 rounded-lg"
+              />
+
+              <input
+                type="text"
+                placeholder="Valor"
+                value={form.valor ? formatarMoedaInput(form.valor) : ""}
+                onChange={(e) => {
+                  let somenteNumeros = e.target.value.replace(/\D/g, "")
+
+                  setForm({
+                    ...form,
+                    valor: somenteNumeros
+                  })
+                }}
+                className="border p-2 rounded-lg"
+              />
+
+              <input
+                type="date"
+                value={form.data_inicio}
+                disabled={modoEdicao === "todos"} // 🔥
+                onChange={(e) =>
+                  setForm({ ...form, data_inicio: e.target.value })
+                }
+                className="border p-2 rounded-lg disabled:bg-gray-100"
+              />
+            </div>
+
+            {/* AÇÕES */}
+            <div className="flex justify-between mt-6">
+
+              <button
+                onClick={removerComOpcao}
+                className="text-red-600 hover:underline"
+              >
+                Remover
+              </button>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEditando(null)}
+                  className="px-4 py-2 border rounded-lg"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  onClick={salvarEdicao}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

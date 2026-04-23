@@ -29,7 +29,6 @@ export default function Home() {
   const [abrirModal, setAbrirModal] = useState(false)
   const [categoriaId, setCategoriaId] = useState("")
 
-
   const { user, loading } = useAuth()
 
   const [fixo, setFixo] = useState(false)
@@ -94,6 +93,26 @@ export default function Home() {
     }).format(valor)
   }
 
+  const formatarMoedaInput = (valor: string) => {
+    const numero = Number(valor) / 100
+
+    return numero.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    })
+  }
+
+  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let somenteNumeros = e.target.value.replace(/\D/g, "")
+
+    if (!somenteNumeros) {
+      setValor("")
+      return
+    }
+
+    setValor(somenteNumeros)
+  }
+
   const categoriasFiltradas = useMemo(() => {
     return categorias.filter((c) => c.tipo === tipo)
   }, [categorias, tipo])
@@ -104,6 +123,7 @@ export default function Home() {
     if (fixo) {
       const totalParcelas = parcelas ? Number(parcelas) : 1
       const lista = []
+      const grupoId = crypto.randomUUID() // 🔥 AQUI
 
       for (let i = 0; i < totalParcelas; i++) {
         const [ano, mes, dia] = dataFinal.split("-").map(Number)
@@ -111,7 +131,7 @@ export default function Home() {
 
         lista.push({
           tipo,
-          valor: Number(valor),
+          valor: Number(valor) / 100,
           pagamento,
           descricao,
           data_inicio: formatarDataISO(novaData),
@@ -120,7 +140,8 @@ export default function Home() {
           recorrente: !parcelas,
           status: "pendente",
           categoria: Number(categoriaId),
-          user_id: user.id // ✅ agora certo
+          user_id: user.id,
+          grupo_id: grupoId // 🔥 TODOS recebem o mesmo
         })
       }
 
@@ -138,7 +159,7 @@ export default function Home() {
       const { error } = await supabase.from("transactions").insert([
         {
           tipo,
-          valor: Number(valor),
+          valor: Number(valor) / 100,
           pagamento,
           data: dataFinal,
           descricao,
@@ -326,7 +347,7 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-4 flex-1">
             <div className="col-span-2 bg-white rounded-xl p-4 shadow overflow-hidden">
 
-              <div className="bg-white rounded-xl p-4 h-[300px] lg:h-full">
+              <div className="bg-white rounded-xl h-[300px] lg:h-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={gerarDadosGrafico()}>
                     <XAxis dataKey="mes" />
@@ -421,10 +442,10 @@ export default function Home() {
             <div className="flex flex-col gap-3">
 
               <input
-                type="number"
+                type="text"
                 placeholder="Valor"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
+                value={valor ? formatarMoedaInput(valor) : ""}
+                onChange={handleValorChange}
                 className="border p-2 rounded-lg"
               />
 

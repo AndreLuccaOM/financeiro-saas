@@ -19,6 +19,8 @@ import {
   PowerIcon,
   XMarkIcon,
   Bars3Icon,
+  ChartPieIcon,
+  LightBulbIcon,
 } from "@heroicons/react/24/outline"
 export const metadata = {
   title: "Financeiro SaaS",
@@ -32,7 +34,8 @@ export default function Layout({ children }: any) {
     { href: "/", label: "Início", icon: HomeIcon },
     { href: "/transacoes", label: "Transações", icon: ArrowsRightLeftIcon },
     { href: "/compromissos", label: "Compromissos", icon: CalendarIcon },
-    { href: "/insights", label: "Insights", icon: ChartBarIcon },
+    { href: "/relatorios", label: "Relatorios", icon: ChartPieIcon },
+   // { href: "/insights", label: "Insights", icon: LightBulbIcon },
     { href: "/perfil", label: "Perfil", icon: UserIcon },
     { href: "/login", label: "Sair", icon: PowerIcon },
   ]

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "../../lib/supabase"
 import Layout from "../components/Layout"
+import { useAuth } from "../components/AuthContext"
 
 export default function Insights() {
   const [transacoes, setTransacoes] = useState<any[]>([])
@@ -17,10 +18,12 @@ export default function Insights() {
   useEffect(() => {
     buscar()
   }, [])
-
+  const { user } = useAuth()
   const hoje = new Date()
   const mesAtual = hoje.getMonth()
   const anoAtual = hoje.getFullYear()
+  const [analiseIA, setAnaliseIA] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const mesPassado = mesAtual === 0 ? 11 : mesAtual - 1
   const anoMesPassado = mesAtual === 0 ? anoAtual - 1 : anoAtual
@@ -75,6 +78,27 @@ export default function Insights() {
     )
   }
 
+  const gerarInsightsIA = async () => {
+    const res = await fetch("/api/insights", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        transacoes,
+        user_id: user.id
+      })
+    })
+
+    const data = await res.json()
+
+    if (data.erro) {
+      alert(data.erro)
+      return
+    }
+
+    setAnaliseIA(data.resposta)
+  }
   return (
     <Layout>
       <div className="flex flex-col gap-4">
@@ -109,6 +133,20 @@ export default function Insights() {
         </div>
 
       </div>
+
+      <button
+        onClick={gerarInsightsIA}
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+        disabled={loading}
+      >
+        {loading ? "Gerando..." : "Gerar insights com IA"}
+      </button>
+
+      {analiseIA && (
+        <div className="bg-blue-50 p-4 rounded mt-4">
+          <p>{analiseIA}</p>
+        </div>
+      )}
     </Layout>
   )
 }
