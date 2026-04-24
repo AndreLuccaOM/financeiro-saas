@@ -35,7 +35,7 @@ export default function Layout({ children }: any) {
     { href: "/transacoes", label: "Transações", icon: ArrowsRightLeftIcon },
     { href: "/compromissos", label: "Compromissos", icon: CalendarIcon },
     { href: "/relatorios", label: "Relatorios", icon: ChartPieIcon },
-   // { href: "/insights", label: "Insights", icon: LightBulbIcon },
+    //{ href: "/insights", label: "Insights", icon: LightBulbIcon },
     { href: "/perfil", label: "Perfil", icon: UserIcon },
     { href: "/login", label: "Sair", icon: PowerIcon },
   ]
@@ -185,7 +185,7 @@ export default function Layout({ children }: any) {
         </div>
 
         {/* CONTEÚDO */}
-        <div className="col-span-1 lg:col-span-10 flex flex-col gap-4 lg:pb-0 pb-4">
+        <div className="col-span-1 lg:col-span-10 flex flex-col gap-4 lg:pb-0 pb-4 min-h-0">
 
           {/* HEADER */}
           <div className="bg-white rounded-xl p-4 shadow flex justify-between items-center">
